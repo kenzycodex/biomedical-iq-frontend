@@ -10,7 +10,7 @@ const Register = () => {
     email: '',
     username: '',
     phone_number: '',
-    organisation_name: '',
+    organization_name: '',
     password: '',
     confirm_password: '',
   });
@@ -18,6 +18,7 @@ const Register = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false);  // Added loading state
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -26,12 +27,19 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (userData.password !== userData.confirm_password) {
+      setError('Passwords do not match');
+      return;
+    }
+    setLoading(true);  // Prevent double submit
     try {
       await register(userData);
       setSuccess('Registration successful! Please check your email for verification.');
       setTimeout(() => navigate('/verify'), 3000);
     } catch (error) {
       setError(error.response?.data?.error || 'An error occurred during registration');
+    } finally {
+      setLoading(false);  // Reset loading state
     }
   };
 
@@ -60,6 +68,7 @@ const Register = () => {
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm -space-y-px">
+            {/* Full Name */}
             <div className="relative mb-4">
               <FiUser className={iconClass} />
               <input
@@ -72,6 +81,8 @@ const Register = () => {
                 onChange={handleChange}
               />
             </div>
+
+            {/* Email */}
             <div className="relative mb-4">
               <FiMail className={iconClass} />
               <input
@@ -84,6 +95,8 @@ const Register = () => {
                 onChange={handleChange}
               />
             </div>
+
+            {/* Username */}
             <div className="relative mb-4">
               <FiUser className={iconClass} />
               <input
@@ -96,6 +109,8 @@ const Register = () => {
                 onChange={handleChange}
               />
             </div>
+
+            {/* Phone Number */}
             <div className="relative mb-4">
               <FiPhone className={iconClass} />
               <input
@@ -108,18 +123,22 @@ const Register = () => {
                 onChange={handleChange}
               />
             </div>
+
+            {/* Organization Name */}
             <div className="relative mb-4">
               <FiBriefcase className={iconClass} />
               <input
-                name="organisation_name"
+                name="organization_name"
                 type="text"
                 required
                 className={`${inputClass} pl-10`}
                 placeholder="Organization Name"
-                value={userData.organisation_name}
+                value={userData.organization_name}
                 onChange={handleChange}
               />
             </div>
+
+            {/* Password */}
             <div className="relative mb-4">
               <FiLock className={iconClass} />
               <input
@@ -139,6 +158,8 @@ const Register = () => {
                 {showPassword ? <FiEyeOff /> : <FiEye />}
               </button>
             </div>
+
+            {/* Confirm Password */}
             <div className="relative mb-4">
               <FiLock className={iconClass} />
               <input
@@ -160,6 +181,7 @@ const Register = () => {
             </div>
           </div>
 
+          {/* Error Message */}
           <AnimatePresence>
             {error && (
               <motion.div
@@ -175,6 +197,7 @@ const Register = () => {
             )}
           </AnimatePresence>
 
+          {/* Success Message */}
           <AnimatePresence>
             {success && (
               <motion.div

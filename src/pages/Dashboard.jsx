@@ -1,66 +1,115 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchUserProfile, logout, updateUserProfile } from '../api/auth';
 import {
-  FiUser,
-  FiMail,
-  FiPhone,
-  FiMapPin,
-  FiLogOut,
-  FiEdit2,
-  FiSave,
-  FiActivity,
-  FiSettings,
-  FiHelpCircle,
-} from 'react-icons/fi';
-import { motion } from 'framer-motion';
+  AppBar, Toolbar, Typography, Button, Container, Grid, Paper, Avatar,
+  List, ListItem, ListItemIcon, ListItemText, Tabs, Tab, TextField,
+  CircularProgress, Snackbar, IconButton, Fade, Grow, Zoom
+} from '@mui/material';
+import { styled } from '@mui/material/styles';
+import {
+  Person as PersonIcon,
+  Email as EmailIcon,
+  Phone as PhoneIcon,
+  Business as BusinessIcon,
+  ExitToApp as LogoutIcon,
+  Edit as EditIcon,
+  Save as SaveIcon,
+  Timeline as TimelineIcon,
+  Settings as SettingsIcon,
+  Help as HelpIcon,
+  Close as CloseIcon
+} from '@mui/icons-material';
+import { fetchUserProfile, logout, updateUserProfile } from '../api/auth';
+
+const StyledPaper = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(3),
+  height: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+  transition: theme.transitions.create(['box-shadow'], {
+    duration: theme.transitions.duration.short,
+  }),
+  '&:hover': {
+    boxShadow: theme.shadows[4],
+  },
+}));
+
+const AnimatedAvatar = styled(Avatar)(({ theme }) => ({
+  width: 120,
+  height: 120,
+  margin: 'auto',
+  marginBottom: theme.spacing(2),
+  transition: theme.transitions.create(['width', 'height'], {
+    duration: theme.transitions.duration.short,
+  }),
+  '&:hover': {
+    width: 130,
+    height: 130,
+  },
+}));
+
+const LoadingSpinner = () => (
+  <Container sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+    <CircularProgress />
+  </Container>
+);
 
 const Dashboard = () => {
   const [userData, setUserData] = useState(null);
   const [error, setError] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [editedData, setEditedData] = useState({});
-  const [activeTab, setActiveTab] = useState('profile');
+  const [activeTab, setActiveTab] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const getUserData = async () => {
-      try {
-        const response = await fetchUserProfile();
-        setUserData(response.data);
-        setEditedData(response.data);
-      } catch (error) {
-        setError('Failed to load user data');
-        console.error('Error:', error);
+  const fetchUserData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await fetchUserProfile();
+      setUserData(data);
+      setEditedData(data);
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+      if (error.response && error.response.status === 401) {
+        handleLogout();
+      } else {
+        setError(error?.message || 'Failed to load user data');
       }
-    };
-
-    getUserData();
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchUserData();
+  }, [fetchUserData]);
 
   const handleLogout = async () => {
     try {
       await logout();
-      localStorage.removeItem('token');
-      navigate('/login');
     } catch (error) {
-      setError('Logout failed');
-      console.error('Error:', error);
+      console.error('Logout error:', error);
+    } finally {
+      sessionStorage.removeItem('access_token');
+      sessionStorage.removeItem('refresh_token');
+      navigate('/login');
     }
   };
 
-  const handleEdit = () => {
-    setIsEditing(true);
-  };
+  const handleEdit = () => setIsEditing(true);
 
   const handleSave = async () => {
     try {
-      await updateUserProfile(editedData);
-      setUserData(editedData);
+      const updatedData = await updateUserProfile(editedData);
+      setUserData(updatedData);
       setIsEditing(false);
+      setSnackbar({ open: true, message: 'Profile updated successfully', severity: 'success' });
+      fetchUserData(); // Reload user data
     } catch (error) {
-      setError('Failed to update profile');
-      console.error('Error:', error);
+      setError(error?.response?.data?.message || 'Failed to update profile');
+      setSnackbar({ open: true, message: 'Failed to update profile', severity: 'error' });
     }
   };
 
@@ -68,168 +117,221 @@ const Dashboard = () => {
     setEditedData({ ...editedData, [e.target.name]: e.target.value });
   };
 
+  const handleTabChange = (event, newValue) => {
+    setActiveTab(newValue);
+  };
+
+  const handleCloseSnackbar = (event, reason) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setSnackbar({ ...snackbar, open: false });
+  };
+
+  if (loading) return <LoadingSpinner />;
+
   if (error) {
     return (
-      <div className='min-h-screen flex items-center justify-center bg-gray-50'>
-        <div className='text-red-500 text-xl'>{error}</div>
-      </div>
+      <Container>
+        <Typography color="error" variant="h6">{error}</Typography>
+      </Container>
     );
   }
 
   if (!userData) {
     return (
-      <div className='min-h-screen flex items-center justify-center bg-gray-50'>
-        <div className='text-gray-500 text-xl'>Loading...</div>
-      </div>
+      <Container>
+        <Typography color="warning" variant="h6">No user data available.</Typography>
+      </Container>
     );
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-      className='min-h-screen bg-gray-100 p-8'
-    >
-      <div className='max-w-7xl mx-auto'>
-        <div className='flex justify-between items-center mb-8'>
-          <h1 className='text-3xl font-semibold text-gray-800'>Welcome, {userData.full_name}</h1>
-          <button
-            onClick={handleLogout}
-            className='px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition duration-300 flex items-center'
-          >
-            <FiLogOut className='mr-2' /> Logout
-          </button>
-        </div>
+    <Fade in={true} timeout={1000}>
+      <div>
+        <AppBar position="static" elevation={0}>
+          <Toolbar>
+            <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+              Biomedical IQ Dashboard
+            </Typography>
+            <Typography variant="subtitle1" sx={{ mr: 2 }}>
+              Welcome, {userData.full_name}
+            </Typography>
+            <Button color="inherit" onClick={handleLogout} startIcon={<LogoutIcon />}>
+              Logout
+            </Button>
+          </Toolbar>
+        </AppBar>
 
-        <div className='grid grid-cols-1 md:grid-cols-3 gap-8'>
-          <div className='bg-white rounded-lg shadow-md p-6'>
-            <h2 className='text-xl font-semibold mb-4'>User Profile</h2>
-            <div className='flex flex-col items-center'>
-              <div className='w-32 h-32 bg-gray-300 rounded-full flex items-center justify-center mb-4'>
-                <FiUser className='w-16 h-16 text-gray-600' />
-              </div>
-              <h2 className='text-xl font-semibold mb-2'>{userData.full_name}</h2>
-              <p className='text-gray-500'>{userData.email}</p>
-            </div>
-          </div>
-
-          <div className='bg-white rounded-lg shadow-md p-6 md:col-span-2'>
-            <h2 className='text-xl font-semibold mb-4'>Account Information</h2>
-            <div className='mb-4'>
-              <div className='flex space-x-4 border-b'>
-                {['profile', 'activity', 'settings'].map((tab) => (
-                  <button
-                    key={tab}
-                    className={`pb-2 px-1 ${
-                      activeTab === tab
-                        ? 'border-b-2 border-blue-500 text-blue-500'
-                        : 'text-gray-500'
-                    }`}
-                    onClick={() => setActiveTab(tab)}
-                  >
-                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {activeTab === 'profile' && (
-              <div className='space-y-4'>
-                <div className='flex items-center'>
-                  <FiUser className='mr-2 text-gray-500' />
-                  <input
-                    name='full_name'
-                    value={isEditing ? editedData.full_name : userData.full_name}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    className='w-full p-2 border rounded-md'
-                  />
-                </div>
-                <div className='flex items-center'>
-                  <FiMail className='mr-2 text-gray-500' />
-                  <input
-                    name='email'
-                    value={isEditing ? editedData.email : userData.email}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    className='w-full p-2 border rounded-md'
-                  />
-                </div>
-                <div className='flex items-center'>
-                  <FiPhone className='mr-2 text-gray-500' />
-                  <input
-                    name='phone_number'
-                    value={isEditing ? editedData.phone_number : userData.phone_number || 'N/A'}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    className='w-full p-2 border rounded-md'
-                  />
-                </div>
-                <div className='flex items-center'>
-                  <FiMapPin className='mr-2 text-gray-500' />
-                  <input
-                    name='address'
-                    value={isEditing ? editedData.address : userData.address || 'N/A'}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    className='w-full p-2 border rounded-md'
-                  />
-                </div>
-                <div className='flex justify-end'>
-                  {isEditing ? (
-                    <button
-                      onClick={handleSave}
-                      className='px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-300 flex items-center'
-                    >
-                      <FiSave className='mr-2' /> Save
-                    </button>
-                  ) : (
-                    <button
-                      onClick={handleEdit}
-                      className='px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition duration-300 flex items-center'
-                    >
-                      <FiEdit2 className='mr-2' /> Edit
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-            {activeTab === 'activity' && (
-              <div className='space-y-4'>
-                <h3 className='text-lg font-semibold'>Recent Activity</h3>
-                <p className='text-gray-500'>No recent activity to display.</p>
-              </div>
-            )}
-            {activeTab === 'settings' && (
-              <div className='space-y-4'>
-                <h3 className='text-lg font-semibold'>Account Settings</h3>
-                <p className='text-gray-500'>Account settings options will be available soon.</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className='grid grid-cols-1 md:grid-cols-3 gap-8 mt-8'>
-          <div className='bg-white rounded-lg shadow-md p-6'>
-            <h2 className='text-xl font-semibold mb-4'>Quick Actions</h2>
-            <div className='space-y-2'>
-              {[
-                { icon: FiActivity, text: 'View Activity Log' },
-                { icon: FiSettings, text: 'Account Settings' },
-                { icon: FiHelpCircle, text: 'Get Help' },
-              ].map(({ icon: Icon, text }, index) => (
-                <button
-                  key={index}
-                  className='w-full py-2 px-4 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition duration-300 flex items-center'
+        <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+          <Grid container spacing={3}>
+            <Grow in={true} timeout={1000}>
+              <Grid item xs={12} md={4} lg={3}>
+                <StyledPaper elevation={3}>
+                  <AnimatedAvatar sx={{ bgcolor: 'primary.main' }}>
+                    {userData.full_name.charAt(0)}
+                  </AnimatedAvatar>
+                  <List>
+                    <ListItem>
+                      <ListItemIcon><PersonIcon /></ListItemIcon>
+                      <ListItemText primary={userData.full_name} secondary="Full Name" />
+                    </ListItem>
+                    <ListItem>
+                      <ListItemIcon><EmailIcon /></ListItemIcon>
+                      <ListItemText primary={userData.email} secondary="Email" />
+                    </ListItem>
+                    {userData.phone_number && (
+                      <ListItem>
+                        <ListItemIcon><PhoneIcon /></ListItemIcon>
+                        <ListItemText primary={userData.phone_number} secondary="Phone" />
+                      </ListItem>
+                    )}
+                    {userData.organization_name && (
+                      <ListItem>
+                        <ListItemIcon><BusinessIcon /></ListItemIcon>
+                        <ListItemText primary={userData.organization_name} secondary="Organization" />
+                      </ListItem>
+                    )}
+                  </List>
+                </StyledPaper>
+              </Grid>
+            </Grow>
+            <Grid item xs={12} md={8} lg={9}>
+              <StyledPaper elevation={3}>
+                <Tabs 
+                  value={activeTab} 
+                  onChange={handleTabChange} 
+                  aria-label="dashboard tabs"
+                  variant="fullWidth"
+                  indicatorColor="primary"
+                  textColor="primary"
                 >
-                  <Icon className='mr-2' /> {text}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
+                  <Tab label="Profile" icon={<PersonIcon />} />
+                  <Tab label="Activity" icon={<TimelineIcon />} />
+                  <Tab label="Settings" icon={<SettingsIcon />} />
+                </Tabs>
+                <Fade in={activeTab === 0} timeout={500}>
+                  <div hidden={activeTab !== 0}>
+                    <Typography variant="h6" sx={{ mt: 2, mb: 2 }}>Account Information</Typography>
+                    {isEditing ? (
+                      <form onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
+                        <TextField
+                          fullWidth
+                          margin="normal"
+                          label="Full Name"
+                          name="full_name"
+                          value={editedData.full_name}
+                          onChange={handleInputChange}
+                          variant="outlined"
+                        />
+                        <TextField
+                          fullWidth
+                          margin="normal"
+                          label="Email"
+                          name="email"
+                          type="email"
+                          value={editedData.email}
+                          onChange={handleInputChange}
+                          variant="outlined"
+                        />
+                        <TextField
+                          fullWidth
+                          margin="normal"
+                          label="Phone Number"
+                          name="phone_number"
+                          value={editedData.phone_number || ''}
+                          onChange={handleInputChange}
+                          variant="outlined"
+                        />
+                        <TextField
+                          fullWidth
+                          margin="normal"
+                          label="Organization Name"
+                          name="organization_name"
+                          value={editedData.organization_name || ''}
+                          onChange={handleInputChange}
+                          variant="outlined"
+                        />
+                        <Button
+                          type="submit"
+                          variant="contained"
+                          color="primary"
+                          startIcon={<SaveIcon />}
+                          sx={{ mt: 2 }}
+                        >
+                          Save
+                        </Button>
+                      </form>
+                    ) : (
+                      <Button
+                        onClick={handleEdit}
+                        variant="contained"
+                        color="secondary"
+                        startIcon={<EditIcon />}
+                        sx={{ mt: 2 }}
+                      >
+                        Edit Profile
+                      </Button>
+                    )}
+                  </div>
+                </Fade>
+                <Fade in={activeTab === 1} timeout={500}>
+                  <div hidden={activeTab !== 1}>
+                    <Typography variant="h6" sx={{ mt: 2 }}>Recent Activity</Typography>
+                    <Typography>No recent activity to display.</Typography>
+                  </div>
+                </Fade>
+                <Fade in={activeTab === 2} timeout={500}>
+                  <div hidden={activeTab !== 2}>
+                    <Typography variant="h6" sx={{ mt: 2 }}>Account Settings</Typography>
+                    <Typography>Account settings options will be available soon.</Typography>
+                  </div>
+                </Fade>
+              </StyledPaper>
+            </Grid>
+          </Grid>
+
+          <Typography variant="h5" sx={{ mt: 4, mb: 2 }}>Quick Actions</Typography>
+          <Grid container spacing={3}>
+            {[
+              { icon: <TimelineIcon />, text: 'View Activity Log' },
+              { icon: <SettingsIcon />, text: 'Account Settings' },
+              { icon: <HelpIcon />, text: 'Get Help' },
+            ].map(({ icon, text }, index) => (
+              <Zoom in={true} style={{ transitionDelay: `${index * 100}ms` }} key={index}>
+                <Grid item xs={12} sm={6} md={4}>
+                  <StyledPaper sx={{ cursor: 'pointer', textAlign: 'center', py: 3 }}>
+                    {React.cloneElement(icon, { sx: { fontSize: 48, color: 'primary.main', mb: 2 } })}
+                    <Typography variant="h6">{text}</Typography>
+                  </StyledPaper>
+                </Grid>
+              </Zoom>
+            ))}
+          </Grid>
+        </Container>
+
+        <Snackbar
+          anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'center',
+          }}
+          open={snackbar.open}
+          autoHideDuration={6000}
+          onClose={handleCloseSnackbar}
+          message={snackbar.message}
+          action={
+            <IconButton
+              size="small"
+              aria-label="close"
+              color="inherit"
+              onClick={handleCloseSnackbar}
+            >
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          }
+        />
       </div>
-    </motion.div>
+    </Fade>
   );
 };
 

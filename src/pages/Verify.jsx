@@ -18,7 +18,8 @@ const Verify = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await verify2FA(verificationData);
+      // Pass email and verification_code separately to match the updated API call
+      await verify2FA(verificationData.email, verificationData.verification_code);
       setSuccess('Account verified successfully!');
       setTimeout(() => navigate('/login'), 3000);
     } catch (error) {
