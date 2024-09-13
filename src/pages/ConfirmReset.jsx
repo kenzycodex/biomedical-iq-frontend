@@ -14,6 +14,7 @@ const ConfirmReset = () => {
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false); // Added loading state
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -22,12 +23,19 @@ const ConfirmReset = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (resetData.new_password !== resetData.confirm_password) {
+      setError('Passwords do not match');
+      return;
+    }
+    setLoading(true); // Set loading to true on submit
     try {
       await confirmReset(resetData);
       setSuccess('Password reset successful!');
       setTimeout(() => navigate('/login'), 3000);
     } catch (error) {
       setError(error.response?.data?.error || 'An error occurred');
+    } finally {
+      setLoading(false); // Reset loading state
     }
   };
 
@@ -104,9 +112,10 @@ const ConfirmReset = () => {
           <div>
             <button
               type='submit'
+              disabled={loading} // Disable button while loading
               className='group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500'
             >
-              Reset Password
+              {loading ? 'Resetting...' : 'Reset Password'} // Show loading text
             </button>
           </div>
         </form>

@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { login } from '../api/auth';
 import { FiUser, FiLock, FiEye, FiEyeOff } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
+import { RingLoader } from 'react-spinners'; // Import the RingLoader spinner
 
 const Login = () => {
-  const [credentials, setCredentials] = useState({ login_info: '', password: '' }); // Changed login_identifier to login_info
+  const [credentials, setCredentials] = useState({ login_info: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false); // Added loading state
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -15,20 +17,22 @@ const Login = () => {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  try {
-    const { token, user } = await login(credentials);
+    e.preventDefault();
+    setLoading(true); // Start loading state
+    try {
+      const { token, user } = await login(credentials);
 
-    if (user.requires2FA) {
-      navigate('/2fa', { state: { message: 'Please enter your 2FA code', email: credentials.login_info } });
-    } else {
-      // The token is already stored in sessionStorage by the login function
-      navigate('/dashboard');
+      if (user.requires2FA) {
+        navigate('/2fa', { state: { message: 'Please enter your 2FA code', email: credentials.login_info } });
+      } else {
+        navigate('/dashboard');
+      }
+    } catch (error) {
+      setError(error?.error || 'Invalid credentials');
+    } finally {
+      setLoading(false); // Reset loading state
     }
-  } catch (error) {
-    setError(error?.error || 'Invalid credentials');
-  }
-};
+  };
 
   useEffect(() => {
     if (error) {
@@ -37,8 +41,7 @@ const Login = () => {
     }
   }, [error]);
 
-  const inputClass =
-    'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-800 text-white';
+  const inputClass = 'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-800 text-white';
   const iconClass = 'absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400';
 
   return (
@@ -59,12 +62,12 @@ const Login = () => {
             <div className='relative mb-4'>
               <FiUser className={iconClass} />
               <input
-                name='login_info' // Changed from login_identifier
+                name='login_info'
                 type='text'
                 required
                 className={`${inputClass} pl-10`}
                 placeholder='Email or Username'
-                value={credentials.login_info} // Changed to match login_info
+                value={credentials.login_info}
                 onChange={handleChange}
               />
             </div>
@@ -118,9 +121,9 @@ const Login = () => {
             </div>
 
             <div className='text-sm'>
-              <a href='/reset-password' className='font-medium text-blue-500 hover:text-blue-400'>
+              <Link to='/reset-password' className='font-medium text-blue-500 hover:text-blue-400'>
                 Forgot your password?
-              </a>
+              </Link>
             </div>
           </div>
 
@@ -128,17 +131,25 @@ const Login = () => {
             <button
               type='submit'
               className='group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+              disabled={loading} // Disable button while loading
             >
-              Sign in
+              {loading ? (
+                <div className='flex items-center'>
+                  <RingLoader color='#ffffff' size={24} /> {/* Spinner */}
+                  <span className='ml-3'>Signing in...</span>
+                </div>
+              ) : (
+                'Sign in'
+              )}
             </button>
           </div>
         </form>
         <div className='text-center mt-4'>
           <p className='text-sm text-gray-400'>
             Don't have an account?{' '}
-            <a href='/register' className='font-medium text-blue-500 hover:text-blue-400'>
+            <Link to='/register' className='font-medium text-blue-500 hover:text-blue-400'>
               Sign up here
-            </a>
+            </Link>
           </p>
         </div>
       </div>
@@ -147,4 +158,3 @@ const Login = () => {
 };
 
 export default Login;
-

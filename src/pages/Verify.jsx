@@ -9,6 +9,7 @@ const Verify = () => {
   const [verificationData, setVerificationData] = useState({ email: '', verification_code: '' });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -17,13 +18,23 @@ const Verify = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!verificationData.email || !verificationData.verification_code) {
+      setError('Please fill in all fields.');
+      return;
+    }
+
+    setError('');
+    setSuccess('');
+    setLoading(true);
+
     try {
-      // Pass email and verification_code separately to match the updated API call
       await verify2FA(verificationData.email, verificationData.verification_code);
       setSuccess('Account verified successfully!');
       setTimeout(() => navigate('/login'), 3000);
     } catch (error) {
       setError(error.response?.data?.error || 'An error occurred');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -86,8 +97,9 @@ const Verify = () => {
             <button
               type='submit'
               className='group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500'
+              disabled={loading}
             >
-              Verify Account
+              {loading ? 'Verifying...' : 'Verify Account'}
             </button>
           </div>
         </form>

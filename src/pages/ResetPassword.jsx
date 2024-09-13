@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { resetPassword } from '../api/auth';
 import FormInput from '../components/FormInput';
 import { FiMail } from 'react-icons/fi';
@@ -78,6 +78,14 @@ const ResetPassword = () => {
             </button>
           </div>
         </form>
+        <div className='text-center mt-4'>
+          <p className='text-sm text-gray-400'>
+            Remember your password?{' '}
+            <Link to='/login' className='font-medium text-blue-500 hover:text-blue-400'>
+              Login here
+            </Link>
+          </p>
+        </div>
       </div>
     </motion.div>
   );
