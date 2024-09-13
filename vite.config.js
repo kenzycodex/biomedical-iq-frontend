@@ -1,22 +1,25 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { resolve } from 'path';
+import { copyFileSync } from 'fs';
 
-// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
   build: {
-    // Increase the chunk size warning limit to 1000 kB
-    chunkSizeWarningLimit: 1000,
+    outDir: 'dist',
     rollupOptions: {
-      // Configure manual chunk splitting
-      output: {
-        manualChunks(id) {
-          // Split vendor (node_modules) files into separate chunks
-          if (id.includes('node_modules')) {
-            return id.toString().split('node_modules/')[1].split('/')[0].toString();
-          }
-        },
+      input: {
+        main: './index.html',
       },
     },
+    chunkSizeWarningLimit: 1000,
+  },
+  server: {
+    port: 3000,
+    historyApiFallback: true, // Ensure SPA routing works locally
+  },
+  // Copy _redirects to dist after build
+  buildEnd() {
+    copyFileSync(resolve(__dirname, '_redirects'), resolve(__dirname, 'dist', '_redirects'));
   },
 });
